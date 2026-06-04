@@ -1,6 +1,73 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
 
+const DARK_THEME = `
+  :root {
+    --color-background-primary: #1a1a2e;
+    --color-background-secondary: #252538;
+    --color-background-tertiary: #0f0f1e;
+    --color-text-primary: #f0eefc;
+    --color-text-secondary: #9896b0;
+    --color-text-tertiary: #6a6880;
+    --color-border-tertiary: rgba(43,191,191,0.12);
+    --color-border-secondary: rgba(43,191,191,0.22);
+    --color-border-primary: rgba(43,191,191,0.35);
+    --hch-teal: #2BBFBF;
+    --hch-orange: #F5A623;
+    --hch-purple: #7B4FA6;
+    --hch-blue: #2E86AB;
+    --hch-dark: #4A4A4A;
+    --font-sans: system-ui, -apple-system, sans-serif;
+  }
+  body {
+    background: #0f0f1e;
+    color: #f0eefc;
+    margin: 0;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+  input, select, textarea {
+    background: #252538 !important;
+    color: #f0eefc !important;
+    border: 0.5px solid rgba(43,191,191,0.2) !important;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-family: system-ui, -apple-system, sans-serif;
+    outline: none;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: #2BBFBF !important;
+    box-shadow: 0 0 0 2px rgba(43,191,191,0.15) !important;
+  }
+  button {
+    background: #252538 !important;
+    color: #f0eefc !important;
+    border: 0.5px solid rgba(43,191,191,0.2) !important;
+    border-radius: 8px;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-family: system-ui, -apple-system, sans-serif;
+    transition: all 0.15s ease;
+  }
+  button:hover { border-color: #2BBFBF !important; color: #2BBFBF !important; }
+  input::placeholder, textarea::placeholder { color: #6a6880 !important; }
+  select option { background: #252538; color: #f0eefc; }
+  * { box-sizing: border-box; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #0f0f1e; }
+  ::-webkit-scrollbar-thumb { background: #2BBFBF; border-radius: 3px; }
+`;
+
+function InjectTheme() {
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.id = "qm-dark-theme";
+    style.textContent = DARK_THEME;
+    if (!document.getElementById("qm-dark-theme")) document.head.appendChild(style);
+    return () => { const el = document.getElementById("qm-dark-theme"); if (el) el.remove(); };
+  }, []);
+  return null;
+}
+
 const STORAGE_KEY = "qm_arbeitsmappe_v2";
 
 const DEFAULT_PROJECTS = [
@@ -61,7 +128,7 @@ function downloadCSV(filename, rows) {
 }
 
 function Badge({ color, children }) {
-  const colors = { purple: { bg: "#EEEDFE", text: "#3C3489" }, blue: { bg: "#E6F1FB", text: "#0C447C" }, teal: { bg: "#E1F5EE", text: "#085041" }, amber: { bg: "#FAEEDA", text: "#633806" }, coral: { bg: "#FAECE7", text: "#712B13" }, green: { bg: "#EAF3DE", text: "#27500A" }, red: { bg: "#FCEBEB", text: "#791F1F" }, gray: { bg: "#F1EFE8", text: "#444441" } };
+  const colors = { purple: { bg: "rgba(123,79,166,0.15)", text: "#c49fe8" }, blue: { bg: "rgba(43,191,191,0.12)", text: "#2BBFBF" }, teal: { bg: "rgba(43,191,191,0.12)", text: "#2BBFBF" }, amber: { bg: "rgba(245,166,35,0.15)", text: "#F5A623" }, coral: { bg: "rgba(224,85,85,0.15)", text: "#e07070" }, green: { bg: "rgba(43,191,140,0.15)", text: "#2bbf8c" }, red: { bg: "rgba(224,85,85,0.15)", text: "#e07070" }, gray: { bg: "rgba(255,255,255,0.07)", text: "#9896b0" } };
   const c = colors[color] || colors.gray;
   return <span style={{ background: c.bg, color: c.text, fontSize: 12, fontWeight: 500, padding: "3px 10px", borderRadius: 6, whiteSpace: "nowrap" }}>{children}</span>;
 }
@@ -70,7 +137,7 @@ function TabBar({ tabs, active, onChange }) {
   return (
     <div style={{ display: "flex", gap: 4, borderBottom: "0.5px solid var(--color-border-tertiary, #ddd)", marginBottom: 20 }}>
       {tabs.map((t) => (
-        <button key={t.key} onClick={() => onChange(t.key)} style={{ background: "none", border: "none", cursor: "pointer", padding: "8px 14px", fontSize: 14, fontWeight: active === t.key ? 500 : 400, color: active === t.key ? "var(--color-text-primary, #111)" : "var(--color-text-secondary, #666)", borderBottom: active === t.key ? "2px solid var(--color-text-primary, #111)" : "2px solid transparent", marginBottom: -1 }}>
+        <button key={t.key} onClick={() => onChange(t.key)} style={{ background: "none", border: "none", cursor: "pointer", padding: "8px 14px", fontSize: 14, fontWeight: active === t.key ? 500 : 400, color: active === t.key ? "#2BBFBF" : "var(--color-text-secondary, #9896b0)", borderBottom: active === t.key ? "2px solid #2BBFBF" : "2px solid transparent", marginBottom: -1 }}>
           {t.label}
         </button>
       ))}
@@ -109,7 +176,7 @@ function SettingsPanel({ projects, setProjects, onClose }) {
                   <span style={{ fontSize: 12, color: "var(--color-text-secondary, #666)", marginLeft: 10 }}>{p.qms.length} QMs · {p.topics.length} Themen</span>
                 </div>
                 <button onClick={() => setEditingProject(p.id)} style={{ padding: "4px 12px", fontSize: 12, cursor: "pointer", borderRadius: 6, border: "0.5px solid var(--color-border-tertiary, #ddd)", background: "var(--color-background-primary, #fff)", color: "var(--color-text-secondary, #666)" }}><i className="ti ti-edit" style={{ fontSize: 13, marginRight: 4 }} aria-hidden="true" />Bearbeiten</button>
-                <button onClick={() => deleteProject(p.id)} style={{ padding: "4px 8px", fontSize: 12, cursor: "pointer", borderRadius: 6, border: "0.5px solid var(--color-border-tertiary, #ddd)", background: "var(--color-background-primary, #fff)", color: "#A32D2D" }} aria-label="löschen"><i className="ti ti-trash" style={{ fontSize: 13 }} aria-hidden="true" /></button>
+                <button onClick={() => deleteProject(p.id)} style={{ padding: "4px 8px", fontSize: 12, cursor: "pointer", borderRadius: 6, border: "0.5px solid var(--color-border-tertiary, #ddd)", background: "var(--color-background-primary, #fff)", color: "#e05555" }} aria-label="löschen"><i className="ti ti-trash" style={{ fontSize: 13 }} aria-hidden="true" /></button>
               </div>
             ))}
           </div>
@@ -124,7 +191,7 @@ function SettingsPanel({ projects, setProjects, onClose }) {
           <div style={{ marginBottom: 14 }}><label style={{ fontSize: 12, color: "var(--color-text-secondary, #666)", display: "block", marginBottom: 4 }}>Projektname</label><input value={ep.name} onChange={(e) => updateProject(ep.id, { name: e.target.value })} style={{ width: "100%", boxSizing: "border-box" }} /></div>
           <div style={{ marginBottom: 16 }}>
             <p style={{ fontSize: 13, fontWeight: 500, marginBottom: 8, color: "var(--color-text-primary, #111)" }}>QMs / Coaches</p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>{ep.qms.map((q) => (<span key={q} style={{ display: "flex", alignItems: "center", gap: 4, background: "#E6F1FB", color: "#0C447C", fontSize: 13, padding: "4px 10px", borderRadius: 6 }}>{q}<button onClick={() => removeQM(ep.id, q)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1, color: "#185FA5" }} aria-label="entfernen"><i className="ti ti-x" style={{ fontSize: 11 }} aria-hidden="true" /></button></span>))}</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>{ep.qms.map((q) => (<span key={q} style={{ display: "flex", alignItems: "center", gap: 4, background: "#E6F1FB", color: "#0C447C", fontSize: 13, padding: "4px 10px", borderRadius: 6 }}>{q}<button onClick={() => removeQM(ep.id, q)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1, color: "#2E86AB" }} aria-label="entfernen"><i className="ti ti-x" style={{ fontSize: 11 }} aria-hidden="true" /></button></span>))}</div>
             <div style={{ display: "flex", gap: 8 }}><input value={newQM} onChange={(e) => setNewQM(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addQM(ep.id)} placeholder="QM-Name..." style={{ flex: 1 }} /><button onClick={() => addQM(ep.id)} style={{ padding: "0 14px", cursor: "pointer", fontSize: 13 }}>Hinzufügen</button></div>
           </div>
           <div>
@@ -145,8 +212,8 @@ function HandbookSection({ handbook, setHandbook }) {
   const [newStep, setNewStep] = useState("");
   const [newPhaseName, setNewPhaseName] = useState("");
 
-  const colorMap = { purple: "#534AB7", blue: "#185FA5", teal: "#0F6E56", amber: "#BA7517", coral: "#993C1D", green: "#3B6D11", gray: "#5F5E5A" };
-  const bgMap = { purple: "#EEEDFE", blue: "#E6F1FB", teal: "#E1F5EE", amber: "#FAEEDA", coral: "#FAECE7", green: "#EAF3DE", gray: "#F1EFE8" };
+  const colorMap = { purple: "#534AB7", blue: "#2E86AB", teal: "#2BBFBF", amber: "#F5A623", coral: "#993C1D", green: "#3B6D11", gray: "#5F5E5A" };
+  const bgMap = { purple: "rgba(123,79,166,0.15)", blue: "rgba(46,134,171,0.15)", teal: "rgba(43,191,191,0.15)", amber: "rgba(245,166,35,0.15)", coral: "rgba(224,85,85,0.15)", green: "rgba(43,191,140,0.15)", gray: "rgba(255,255,255,0.07)" };
 
   const updatePhase = (id, patch) => setHandbook(handbook.map((h) => h.id === id ? { ...h, ...patch } : h));
   const deletePhase = (id) => setHandbook(handbook.filter((h) => h.id !== id));
@@ -191,7 +258,7 @@ function HandbookSection({ handbook, setHandbook }) {
                     <select value={s.icon} onChange={(e) => updatePhase(s.id, { icon: e.target.value })} style={{ fontSize: 11, padding: "2px 4px", borderRadius: 6, border: "0.5px solid var(--color-border-tertiary, #ddd)" }}>
                       {PHASE_ICONS.map((ic) => <option key={ic} value={ic}>{ic.replace("ti-", "")}</option>)}
                     </select>
-                    <button onClick={() => deletePhase(s.id)} style={{ padding: "4px 8px", fontSize: 12, cursor: "pointer", borderRadius: 6, border: "0.5px solid var(--color-border-tertiary, #ddd)", background: "var(--color-background-primary, #fff)", color: "#A32D2D" }} aria-label="Phase löschen"><i className="ti ti-trash" style={{ fontSize: 12 }} aria-hidden="true" /></button>
+                    <button onClick={() => deletePhase(s.id)} style={{ padding: "4px 8px", fontSize: 12, cursor: "pointer", borderRadius: 6, border: "0.5px solid var(--color-border-tertiary, #ddd)", background: "var(--color-background-primary, #fff)", color: "#e05555" }} aria-label="Phase löschen"><i className="ti ti-trash" style={{ fontSize: 12 }} aria-hidden="true" /></button>
                   </div>
                 )}
               </div>
@@ -203,7 +270,7 @@ function HandbookSection({ handbook, setHandbook }) {
                         {editMode ? (
                           <>
                             <input value={step} onChange={(e) => editStep(s.id, j, e.target.value)} style={{ flex: 1, fontSize: 13 }} />
-                            <button onClick={() => removeStep(s.id, j)} style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: "#A32D2D", flexShrink: 0 }} aria-label="Schritt löschen"><i className="ti ti-trash" style={{ fontSize: 13 }} aria-hidden="true" /></button>
+                            <button onClick={() => removeStep(s.id, j)} style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: "#e05555", flexShrink: 0 }} aria-label="Schritt löschen"><i className="ti ti-trash" style={{ fontSize: 13 }} aria-hidden="true" /></button>
                           </>
                         ) : step}
                       </li>
@@ -312,7 +379,7 @@ function MonitoringForm({ saved, setSaved, projects }) {
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Bemerkungen / Notizen..." rows={4} style={{ width: "100%", marginTop: 12, fontSize: 13, boxSizing: "border-box" }} />
         </div>
       </div>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}><button onClick={saveEntry} style={{ padding: "8px 20px", fontSize: 14 }}><i className="ti ti-device-floppy" style={{ marginRight: 6 }} aria-hidden="true" />Monitoring speichern</button></div>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}><button onClick={saveEntry} style={{ padding: "8px 20px", fontSize: 14, background: "rgba(43,191,191,0.15) !important", borderColor: "#2BBFBF !important", color: "#2BBFBF !important" }}><i className="ti ti-device-floppy" style={{ marginRight: 6 }} aria-hidden="true" />Monitoring speichern</button></div>
       {saved.length > 0 && (
         <div style={{ marginTop: 20 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
@@ -331,7 +398,7 @@ function MonitoringForm({ saved, setSaved, projects }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   {s.callPct !== null && s.callPct !== undefined && <Badge color={s.callPct >= 90 ? "green" : s.callPct >= 75 ? "amber" : "red"}>{s.callPct} %</Badge>}
                   {s.ticketPct !== null && s.ticketPct !== undefined && <Badge color={s.ticketPct >= 90 ? "green" : s.ticketPct >= 75 ? "amber" : "red"}>T: {s.ticketPct} %</Badge>}
-                  <button onClick={() => setSaved(saved.filter((x) => x.id !== s.id))} style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: "#A32D2D" }} aria-label="löschen"><i className="ti ti-trash" style={{ fontSize: 13 }} aria-hidden="true" /></button>
+                  <button onClick={() => setSaved(saved.filter((x) => x.id !== s.id))} style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: "#e05555" }} aria-label="löschen"><i className="ti ti-trash" style={{ fontSize: 13 }} aria-hidden="true" /></button>
                 </div>
               </div>
             ))}
@@ -378,7 +445,7 @@ function CoachingDoc({ project, entries, setEntries, projects }) {
         <div><label style={{ fontSize: 12, color: "var(--color-text-secondary, #666)", display: "block", marginBottom: 4 }}>Ziel / Anmerkung</label><select value={form.goal} onChange={(e) => update("goal", e.target.value)} style={{ width: "100%" }}><option value="">– Ziel wählen –</option>{GOALS_LIBRARY.map((g) => <option key={g}>{g}</option>)}</select></div>
       </div>
       <div style={{ marginBottom: 10 }}><label style={{ fontSize: 12, color: "var(--color-text-secondary, #666)", display: "block", marginBottom: 4 }}>Dokumentation</label><textarea value={form.doc} onChange={(e) => update("doc", e.target.value)} rows={3} placeholder="z.B. Call ID 2460398 – Servicefragen nicht gestellt" style={{ width: "100%", fontSize: 13, boxSizing: "border-box" }} /></div>
-      <div style={{ display: "flex", justifyContent: "flex-end" }}><button onClick={save} style={{ padding: "8px 20px", fontSize: 14 }}><i className="ti ti-plus" style={{ marginRight: 6 }} aria-hidden="true" />Eintrag hinzufügen</button></div>
+      <div style={{ display: "flex", justifyContent: "flex-end" }}><button onClick={save} style={{ padding: "8px 20px", fontSize: 14, background: "rgba(43,191,191,0.15) !important", borderColor: "#2BBFBF !important", color: "#2BBFBF !important" }}><i className="ti ti-plus" style={{ marginRight: 6 }} aria-hidden="true" />Eintrag hinzufügen</button></div>
       {entries.length > 0 && (
         <div style={{ marginTop: 20 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
@@ -394,10 +461,10 @@ function CoachingDoc({ project, entries, setEntries, projects }) {
                   {e.coach && <span style={{ fontSize: 12, color: "var(--color-text-secondary, #666)" }}>· {e.coach}</span>}
                   {e.projektName && <Badge color="blue">{e.projektName}</Badge>}
                   <Badge color={TOPIC_COLORS[e.topic] || "gray"}>{e.topic}</Badge>
-                  <div style={{ marginLeft: "auto" }}><button onClick={() => setEntries(entries.filter((x) => x.id !== e.id))} style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: "#A32D2D" }} aria-label="löschen"><i className="ti ti-trash" style={{ fontSize: 13 }} aria-hidden="true" /></button></div>
+                  <div style={{ marginLeft: "auto" }}><button onClick={() => setEntries(entries.filter((x) => x.id !== e.id))} style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: "#e05555" }} aria-label="löschen"><i className="ti ti-trash" style={{ fontSize: 13 }} aria-hidden="true" /></button></div>
                 </div>
                 {e.doc && <p style={{ fontSize: 13, color: "var(--color-text-secondary, #666)", margin: "0 0 4px" }}>{e.doc}</p>}
-                {e.goal && <div style={{ display: "flex", alignItems: "center", gap: 6 }}><i className="ti ti-target" style={{ fontSize: 13, color: "#185FA5" }} aria-hidden="true" /><span style={{ fontSize: 12, color: "#185FA5" }}>{e.goal}</span></div>}
+                {e.goal && <div style={{ display: "flex", alignItems: "center", gap: 6 }}><i className="ti ti-target" style={{ fontSize: 13, color: "#2E86AB" }} aria-hidden="true" /><span style={{ fontSize: 12, color: "#2E86AB" }}>{e.goal}</span></div>}
               </div>
             ))}
           </div>
@@ -419,7 +486,7 @@ function OverviewSection({ project, monitorings, coachings }) {
   return (
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
-        {[[String(monThisWeek), "Monitorings diese Woche", "ti-eye", "#185FA5"], [String(coa.length), "Coachings gesamt", "ti-messages", "#0F6E56"], [String(openGoals), "Einträge mit Ziel", "ti-target", "#BA7517"], [String(errors), "Fehlbearbeitungen", "ti-alert-triangle", "#A32D2D"]].map(([value, label, icon, color], i) => (
+        {[[String(monThisWeek), "Monitorings diese Woche", "ti-eye", "#2E86AB"], [String(coa.length), "Coachings gesamt", "ti-messages", "#2BBFBF"], [String(openGoals), "Einträge mit Ziel", "ti-target", "#F5A623"], [String(errors), "Fehlbearbeitungen", "ti-alert-triangle", "#e05555"]].map(([value, label, icon, color], i) => (
           <div key={i} style={{ background: "var(--color-background-secondary, #f5f5f5)", borderRadius: 10, padding: "14px 16px" }}>
             <i className={`ti ${icon}`} style={{ fontSize: 18, color, marginBottom: 8, display: "block" }} aria-hidden="true" />
             <p style={{ fontSize: 22, fontWeight: 500, margin: "0 0 4px", color: "var(--color-text-primary, #111)" }}>{value}</p>
@@ -433,7 +500,7 @@ function OverviewSection({ project, monitorings, coachings }) {
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {project.qms.map((q) => (
               <div key={q} style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--color-background-secondary, #f5f5f5)", borderRadius: 8, padding: "8px 12px" }}>
-                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#E6F1FB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 500, color: "#0C447C" }}>{q.slice(0, 2).toUpperCase()}</div>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(43,191,191,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 500, color: "#2BBFBF" }}>{q.slice(0, 2).toUpperCase()}</div>
                 <span style={{ fontSize: 13, color: "var(--color-text-primary, #111)" }}>{q}</span>
                 <span style={{ fontSize: 12, color: "var(--color-text-secondary, #666)" }}>{coa.filter((e) => e.coach === q).length} Coachings</span>
               </div>
@@ -486,11 +553,12 @@ export default function QMTool() {
   const sectionTabs = [{ key: "overview", label: "Übersicht" }, { key: "handbook", label: "Handbuch & Ablauf" }, { key: "monitoring", label: "Monitoring-Formular" }, { key: "coaching", label: "Coaching-Dokumentation" }];
 
   return (
-    <div style={{ padding: "1.5rem 0", fontFamily: "var(--font-sans, system-ui, sans-serif)" }}>
+    <div style={{ padding: "1.5rem 2rem 3rem", fontFamily: "var(--font-sans, system-ui, sans-serif)", minHeight: "100vh" }}>
+      <InjectTheme />
       <h2 style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", margin: 0 }}>QM-Arbeitsmappe</h2>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
-        <div><p style={{ fontSize: 20, fontWeight: 500, margin: "0 0 4px", color: "var(--color-text-primary, #111)" }}>QM-Arbeitsmappe</p><p style={{ fontSize: 14, color: "var(--color-text-secondary, #666)", margin: 0 }}>Hey Contact Heroes · Qualitätsmanagement</p></div>
-        <button onClick={() => setShowSettings(!showSettings)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", fontSize: 13, cursor: "pointer", borderRadius: 8, border: "0.5px solid var(--color-border-secondary, #ccc)", background: showSettings ? "var(--color-background-secondary, #f5f5f5)" : "var(--color-background-primary, #fff)", color: "var(--color-text-secondary, #666)", fontWeight: showSettings ? 500 : 400 }}><i className="ti ti-settings" style={{ fontSize: 15 }} aria-hidden="true" />Projekte bearbeiten</button>
+        <div><p style={{ fontSize: 20, fontWeight: 500, margin: "0 0 4px", color: "#2BBFBF", letterSpacing: "-0.3px" }}>QM-Arbeitsmappe</p><p style={{ fontSize: 14, color: "var(--color-text-secondary, #9896b0)", margin: 0 }}>Hey Contact Heroes · Qualitätsmanagement</p></div>
+        <button onClick={() => setShowSettings(!showSettings)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", fontSize: 13, cursor: "pointer", borderRadius: 8, border: "0.5px solid var(--color-border-secondary, #ccc)", background: showSettings ? "rgba(43,191,191,0.12)" : "var(--color-background-primary, #1a1a2e)", color: showSettings ? "#2BBFBF" : "var(--color-text-secondary, #9896b0)", fontWeight: showSettings ? 500 : 400 }}><i className="ti ti-settings" style={{ fontSize: 15 }} aria-hidden="true" />Projekte bearbeiten</button>
       </div>
       {showSettings && <SettingsPanel projects={projects} setProjects={setProjects} onClose={() => setShowSettings(false)} />}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
