@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
 
-const STORAGE_KEY = "qm_arbeitsmappe_v8";
+const STORAGE_KEY = "qm_arbeitsmappe_v9";
 
 const DARK_THEME = `
   :root {
@@ -507,9 +507,9 @@ function MonitoringForm({ saved, setSaved, projects }) {
     <div>
       {/* Meta row */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:12, marginBottom:16 }}>
-        <div><label style={{ fontSize:12, color:"var(--text3)", display:"block", marginBottom:4 }}>Agent/in</label><input value={agentName} onChange={(e)=>setAgentName(e.target.value)} placeholder="Name" /></div>
-        <div><label style={{ fontSize:12, color:"var(--text3)", display:"block", marginBottom:4 }}>QM / TL</label>
-          <select value={qm} onChange={(e)=>setQm(e.target.value)}>
+        <div><label style={{ fontSize:12, color:"var(--text3)", display:"block", marginBottom:4 }}>Agent/in <span style={{color:"var(--orange)"}}>*</span></label><input value={agentName} onChange={(e)=>setAgentName(e.target.value)} placeholder="Name" style={{borderColor: agentName ? undefined : "rgba(245,166,35,0.3)"}} /></div>
+        <div><label style={{ fontSize:12, color:"var(--text3)", display:"block", marginBottom:4 }}>QM / TL <span style={{color:"var(--orange)"}}>*</span></label>
+          <select value={qm} onChange={(e)=>setQm(e.target.value)} style={{borderColor: qm ? undefined : "rgba(245,166,35,0.3)"}}>
             <option value="">– QM/TL wählen –</option>
             {(selProject?.qms||[]).map((q)=><option key={q} value={q}>{q}</option>)}
           </select>
@@ -540,11 +540,29 @@ function MonitoringForm({ saved, setSaved, projects }) {
 
       <textarea value={notes} onChange={(e)=>setNotes(e.target.value)} placeholder="Bemerkungen / Notizen zum gesamten Monitoring..." rows={3} style={{ marginBottom:12 }} />
 
-      <div style={{ display:"flex", justifyContent:"flex-end" }}>
-        <button onClick={saveEntry} style={{ background:"rgba(43,191,191,0.15)", borderColor:"var(--teal)", color:"var(--teal)", padding:"8px 20px" }}>
-          <i className="ti ti-device-floppy" style={{ marginRight:6 }} aria-hidden="true" />Monitoring speichern
-        </button>
-      </div>
+      {(() => {
+        const monReady = agentName && qm && activeTypes.length > 0;
+        const missingMon = [];
+        if(!agentName) missingMon.push("Agent/in");
+        if(!qm) missingMon.push("QM / TL");
+        if(activeTypes.length === 0) missingMon.push("mind. 1 aktiver Typ");
+        return (
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:10, marginTop:12 }}>
+            {missingMon.length > 0 && (
+              <span style={{ fontSize:12, color:"var(--text3)" }}>
+                Pflichtfelder: {missingMon.map((m,i)=>(
+                  <span key={m} style={{ color:"var(--orange)" }}>{m}{i<missingMon.length-1?", ":""}</span>
+                ))}
+              </span>
+            )}
+            {monReady && (
+              <button onClick={saveEntry} style={{ background:"rgba(43,191,191,0.15)", borderColor:"var(--teal)", color:"var(--teal)", padding:"8px 20px" }}>
+                <i className="ti ti-device-floppy" style={{ marginRight:6 }} aria-hidden="true" />Monitoring speichern
+              </button>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Saved list */}
       {saved.length>0&&(
@@ -735,12 +753,12 @@ function CoachingDoc({ project, entries, setEntries, projects }) {
     <div>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:10, marginBottom:12 }}>
         <div><label style={{ fontSize:12, color:"var(--text3)", display:"block", marginBottom:4 }}>Datum</label><input type="date" value={form.date} onChange={(e)=>upd("date",e.target.value)} /></div>
-        <div><label style={{ fontSize:12, color:"var(--text3)", display:"block", marginBottom:4 }}>Coach</label><select value={form.coach} onChange={(e)=>upd("coach",e.target.value)}><option value="">– Coach –</option>{sel.qms.map((q)=><option key={q}>{q}</option>)}</select></div>
-        <div><label style={{ fontSize:12, color:"var(--text3)", display:"block", marginBottom:4 }}>Agent/in</label><input value={form.agent} onChange={(e)=>upd("agent",e.target.value)} placeholder="Agent/in" /></div>
+        <div><label style={{ fontSize:12, color:"var(--text3)", display:"block", marginBottom:4 }}>Coach <span style={{color:"var(--orange)"}}>*</span></label><select value={form.coach} onChange={(e)=>upd("coach",e.target.value)} style={{borderColor: form.coach ? undefined : "rgba(245,166,35,0.3)"}}><option value="">– Coach –</option>{sel.qms.map((q)=><option key={q}>{q}</option>)}</select></div>
+        <div><label style={{ fontSize:12, color:"var(--text3)", display:"block", marginBottom:4 }}>Agent/in <span style={{color:"var(--orange)"}}>*</span></label><input value={form.agent} onChange={(e)=>upd("agent",e.target.value)} placeholder="Agent/in" style={{borderColor: form.agent ? undefined : "rgba(245,166,35,0.3)"}} /></div>
         <div><label style={{ fontSize:12, color:"var(--text3)", display:"block", marginBottom:4 }}>Projekt</label><select value={form.projektId} onChange={(e)=>upd("projektId",e.target.value)}>{projects.map((p)=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
-        <div><label style={{ fontSize:12, color:"var(--text3)", display:"block", marginBottom:4 }}>Thema</label><select value={form.topic} onChange={(e)=>upd("topic",e.target.value)}><option value="">– Thema –</option>{sel.topics.map((t)=><option key={t}>{t}</option>)}</select></div>
+        <div><label style={{ fontSize:12, color:"var(--text3)", display:"block", marginBottom:4 }}>Thema <span style={{color:"var(--orange)"}}>*</span></label><select value={form.topic} onChange={(e)=>upd("topic",e.target.value)} style={{borderColor: form.topic ? undefined : "rgba(245,166,35,0.3)"}}><option value="">– Thema –</option>{sel.topics.map((t)=><option key={t}>{t}</option>)}</select></div>
         <div><label style={{ fontSize:12, color:"var(--text3)", display:"block", marginBottom:4 }}>Hauptziel</label><select value={form.goal} onChange={(e)=>upd("goal",e.target.value)}><option value="">– Ziel wählen –</option>{GOALS_LIBRARY.map((g)=><option key={g}>{g}</option>)}</select></div>
       </div>
       {form.goal && (
@@ -750,11 +768,29 @@ function CoachingDoc({ project, entries, setEntries, projects }) {
         </div>
       )}
       <div style={{ marginBottom:10 }}><label style={{ fontSize:12, color:"var(--text3)", display:"block", marginBottom:4 }}>Dokumentation</label><textarea value={form.doc} onChange={(e)=>upd("doc",e.target.value)} rows={3} placeholder="z.B. Call ID 2460398 – Servicefragen nicht gestellt" /></div>
-      <div style={{ display:"flex", justifyContent:"flex-end" }}>
-        <button onClick={save} style={{ background:"rgba(43,191,191,0.15)", borderColor:"var(--teal)", color:"var(--teal)", padding:"8px 20px" }}>
-          <i className="ti ti-plus" style={{ marginRight:6 }} aria-hidden="true" />Eintrag hinzufügen
-        </button>
-      </div>
+      {(() => {
+        const coachingReady = form.coach && form.agent && form.topic;
+        const missing = [];
+        if(!form.coach) missing.push("Coach");
+        if(!form.agent) missing.push("Agent/in");
+        if(!form.topic) missing.push("Thema");
+        return (
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:10 }}>
+            {missing.length > 0 && (
+              <span style={{ fontSize:12, color:"var(--text3)" }}>
+                Pflichtfelder: {missing.map((m,i)=>(
+                  <span key={m} style={{ color:"var(--orange)" }}>{m}{i<missing.length-1?", ":""}</span>
+                ))}
+              </span>
+            )}
+            {coachingReady && (
+              <button onClick={save} style={{ background:"rgba(43,191,191,0.15)", borderColor:"var(--teal)", color:"var(--teal)", padding:"8px 20px" }}>
+                <i className="ti ti-plus" style={{ marginRight:6 }} aria-hidden="true" />Eintrag hinzufügen
+              </button>
+            )}
+          </div>
+        );
+      })()}
       {entries.length>0&&(
         <div style={{ marginTop:20 }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
@@ -1087,10 +1123,10 @@ function HandbookSection({ handbook, setHandbook, triggers, setTriggers }) {
                   <span style={{ width:28, height:28, borderRadius:7, background:BG_MAP[s.color]||"var(--bg3)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                     <i className={`ti ${s.icon}`} style={{ fontSize:14, color:COLOR_MAP[s.color]||"var(--teal)" }} aria-hidden="true" />
                   </span>
-                  {(editMode&&isAdmin) ? <input value={s.phase} onChange={(e)=>upd(s.id,{phase:e.target.value})} onClick={(ev)=>ev.stopPropagation()} style={{ flex:1, fontWeight:500 }} /> : <span style={{ flex:1, fontSize:14, fontWeight:500 }}>{s.phase}</span>}
+                  {Boolean(editMode&&isAdmin) ? <input value={s.phase} onChange={(e)=>upd(s.id,{phase:e.target.value})} onClick={(ev)=>ev.stopPropagation()} style={{ flex:1, fontWeight:500 }} /> : <span style={{ flex:1, fontSize:14, fontWeight:500 }}>{s.phase}</span>}
                   <i className={`ti ti-chevron-${isOpen?"up":"down"}`} style={{ fontSize:13, color:"var(--text3)" }} aria-hidden="true" />
                 </button>
-                {(editMode&&isAdmin)&&(
+                {Boolean(editMode&&isAdmin)&&(
                   <div style={{ display:"flex", gap:4, paddingRight:10 }}>
                     <select value={s.color} onChange={(e)=>upd(s.id,{color:e.target.value})} style={{ width:75, fontSize:11, padding:"3px 6px" }}>{COLORS.map((c)=><option key={c} value={c}>{c}</option>)}</select>
                     <select value={s.icon} onChange={(e)=>upd(s.id,{icon:e.target.value})} style={{ width:90, fontSize:11, padding:"3px 6px" }}>{ICONS.map((ic)=><option key={ic} value={ic}>{ic.replace("ti-","")}</option>)}</select>
@@ -1107,14 +1143,14 @@ function HandbookSection({ handbook, setHandbook, triggers, setTriggers }) {
                       </li>
                     ))}
                   </ol>
-                  {(editMode&&isAdmin)&&(<div style={{ display:"flex", gap:8, marginTop:8 }}><input value={newStep} onChange={(e)=>setNewStep(e.target.value)} onKeyDown={(e)=>{ if(e.key==="Enter"){addStep(s.id,newStep);setNewStep("");} }} placeholder="Neuer Schritt..." /><button onClick={()=>{addStep(s.id,newStep);setNewStep("");}}>+ Schritt</button></div>)}
+                  {Boolean(editMode&&isAdmin)&&(<div style={{ display:"flex", gap:8, marginTop:8 }}><input value={newStep} onChange={(e)=>setNewStep(e.target.value)} onKeyDown={(e)=>{ if(e.key==="Enter"){addStep(s.id,newStep);setNewStep("");} }} placeholder="Neuer Schritt..." /><button onClick={()=>{addStep(s.id,newStep);setNewStep("");}}>+ Schritt</button></div>)}
                 </div>
               )}
             </div>
           );
         })}
       </div>
-      {(editMode&&isAdmin)&&(<div style={{ display:"flex", gap:8, marginTop:10 }}><input value={newPhase} onChange={(e)=>setNewPhase(e.target.value)} onKeyDown={(e)=>{ if(e.key==="Enter"&&newPhase.trim()){setHandbook([...handbook,{id:Date.now(),phase:newPhase.trim(),icon:"ti-star",color:"teal",steps:[]}]);setNewPhase("");} }} placeholder="Neue Phase..." /><button onClick={()=>{ if(newPhase.trim()){setHandbook([...handbook,{id:Date.now(),phase:newPhase.trim(),icon:"ti-star",color:"teal",steps:[]}]);setNewPhase("");} }}>+ Phase</button></div>)}
+      {Boolean(editMode&&isAdmin)&&(<div style={{ display:"flex", gap:8, marginTop:10 }}><input value={newPhase} onChange={(e)=>setNewPhase(e.target.value)} onKeyDown={(e)=>{ if(e.key==="Enter"&&newPhase.trim()){setHandbook([...handbook,{id:Date.now(),phase:newPhase.trim(),icon:"ti-star",color:"teal",steps:[]}]);setNewPhase("");} }} placeholder="Neue Phase..." /><button onClick={()=>{ if(newPhase.trim()){setHandbook([...handbook,{id:Date.now(),phase:newPhase.trim(),icon:"ti-star",color:"teal",steps:[]}]);setNewPhase("");} }}>+ Phase</button></div>)}
       <div style={{ marginTop:18, padding:"14px 16px", background:"var(--bg3)", borderRadius:10, border:"0.5px solid var(--border)" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
           <p style={{ fontSize:13, fontWeight:500, color:"var(--orange)", margin:0 }}>Trigger-Schwellenwerte</p>
