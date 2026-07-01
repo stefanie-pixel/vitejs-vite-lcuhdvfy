@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
 
-const STORAGE_KEY = "qm_arbeitsmappe_v9";
+const STORAGE_KEY = "qm_arbeitsmappe_v10";
 
 const DARK_THEME = `
   :root {
@@ -1093,7 +1093,7 @@ function OverviewSection({ project, monitorings, coachings, projects }) {
 }
 
 // ── HANDBOOK ───────────────────────────────────────────────────────────────
-function HandbookSection({ handbook, setHandbook, triggers, setTriggers }) {
+function HandbookSection({ handbook, setHandbook, triggers, setTriggers, isAdmin }) {
   const [open,setOpen] = useState(null);
   const [editMode,setEditMode] = useState(false);
   const [newStep,setNewStep] = useState("");
@@ -1138,8 +1138,15 @@ function HandbookSection({ handbook, setHandbook, triggers, setTriggers }) {
                 <div style={{ padding:"10px 14px 14px 52px", background:"var(--bg2)" }}>
                   <ol style={{ paddingLeft:18, display:"flex", flexDirection:"column", gap:7 }}>
                     {s.steps.map((step,j)=>(
-                      <li key={j} style={{ fontSize:13, color:"var(--text2)", lineHeight:1.6, display:"flex", alignItems:"center", gap:8 }}>
-                        {editMode ? (<><input value={step} onChange={(e)=>edStep(s.id,j,e.target.value)} style={{ flex:1 }} /><button onClick={()=>rmStep(s.id,j)} style={{ background:"none", border:"none", color:"var(--red)", padding:"1px 5px" }}><i className="ti ti-x" style={{ fontSize:11 }} /></button></>) : step}
+                      <li key={j} style={{ fontSize:13, color:"var(--text2)", lineHeight:1.6 }}>
+                        {editMode && isAdmin ? (
+                          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                            <input value={step} onChange={(e)=>edStep(s.id,j,e.target.value)} style={{ flex:1 }} />
+                            <button onClick={()=>rmStep(s.id,j)} style={{ background:"none", border:"none", color:"var(--red)", padding:"2px 6px", flexShrink:0 }}>
+                              <i className="ti ti-x" style={{ fontSize:11 }} />
+                            </button>
+                          </div>
+                        ) : step}
                       </li>
                     ))}
                   </ol>
