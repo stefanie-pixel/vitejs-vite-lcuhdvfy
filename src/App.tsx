@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
 
-const STORAGE_KEY = "qm_arbeitsmappe_v10";
+const STORAGE_KEY = "qm_arbeitsmappe_v13";
 
 const DARK_THEME = `
   :root {
@@ -206,6 +206,16 @@ const TOPIC_COLORS = {
 
 
 // ── PROJECT STECKBRIEF ─────────────────────────────────────────────────────
+const KPI_ROWS_PROJEKT = [
+  "Forecast","Incoming Volume","Erreichbarkeit","Servicelevel",
+  "FCR","CSAT","ASAT","Bewertungsrate","AHT Telefonie","Callcoding",
+];
+const KPI_ROWS_UMSATZ = [
+  "Warenkorb Ziel","Warenkorb IST","Ø Warenkorb Ziel","Ø Warenkorb IST","CR Ziel","CR IST",
+];
+const MONTHS_SHORT = ["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
+const CUR_YEAR = new Date().getFullYear();
+
 const DEFAULT_STECKBRIEF = {
   kampagnenId: "",
   stand: "",
@@ -227,6 +237,10 @@ const DEFAULT_STECKBRIEF = {
   chancen: "",
   naechsteSchritte: "",
   notizen: "",
+  links: [],
+  kpiData: {},
+  kpiUmsatzData: {},
+  kpiZiele: {},
 };
 
 const DEFAULT_PROJECTS = [
@@ -384,7 +398,20 @@ function AgentOverview({ agentName, monitorings, coachings, projects, onClose })
                       {e.coach && <span style={{ fontSize:11, color:"var(--text3)" }}>· {e.coach}</span>}
                       <Badge color={TOPIC_COLORS[e.topic]||"gray"} small>{e.topic}</Badge>
                     </div>
-                    {e.goal && <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:2 }}><i className="ti ti-target" style={{ fontSize:12, color:"var(--teal)" }} /><span style={{ fontSize:12, color:"var(--teal)" }}>{e.goal}{e.goalSub ? ` · ${e.goalSub}` : ""}</span></div>}
+                    {e.goal && (
+                      <div style={{ marginTop:3 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:2 }}>
+                          <i className="ti ti-target" style={{ fontSize:12, color:"var(--teal)" }} />
+                          <span style={{ fontSize:12, color:"var(--teal)", fontWeight:500 }}>{e.goal}</span>
+                        </div>
+                        {(e.smart_s||e.smart_t)&&(
+                          <div style={{ paddingLeft:17, display:"flex", flexDirection:"column", gap:2 }}>
+                            {e.smart_s&&<span style={{ fontSize:11, color:"var(--text3)" }}><span style={{ color:"var(--teal)", fontWeight:700 }}>S</span> {e.smart_s.slice(0,80)}{e.smart_s.length>80?"…":""}</span>}
+                            {e.smart_t&&<span style={{ fontSize:11, color:"var(--text3)" }}><span style={{ color:"var(--teal)", fontWeight:700 }}>T</span> {e.smart_t}</span>}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {e.doc && <p style={{ fontSize:12, color:"var(--text3)", margin:0 }}>{e.doc}</p>}
                   </div>
                 ))}
@@ -809,7 +836,24 @@ function CoachingDoc({ project, entries, setEntries, projects }) {
                   <div style={{ marginLeft:"auto" }}><button onClick={()=>setEntries(entries.filter((x)=>x.id!==e.id))} style={{ background:"none", border:"none", color:"var(--red)", padding:"2px 6px" }} aria-label="löschen"><i className="ti ti-trash" style={{ fontSize:13 }} aria-hidden="true" /></button></div>
                 </div>
                 {e.doc&&<p style={{ fontSize:13, color:"var(--text3)", margin:"0 0 4px" }}>{e.doc}</p>}
-                {e.goal&&<div style={{ display:"flex", alignItems:"flex-start", gap:6 }}><i className="ti ti-target" style={{ fontSize:13, color:"var(--teal)", marginTop:1 }} aria-hidden="true" /><div><span style={{ fontSize:12, color:"var(--teal)" }}>{e.goal}</span>{e.goalSub&&<p style={{ fontSize:12, color:"var(--text3)", margin:"2px 0 0" }}>↳ {e.goalSub}</p>}</div></div>}
+                {e.goal&&(
+                  <div style={{ marginTop:4 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+                      <i className="ti ti-target" style={{ fontSize:13, color:"var(--teal)" }} aria-hidden="true" />
+                      <span style={{ fontSize:12, color:"var(--teal)", fontWeight:500 }}>{e.goal}</span>
+                    </div>
+                    {(e.smart_s||e.smart_m||e.smart_a||e.smart_r||e.smart_t)&&(
+                      <div style={{ paddingLeft:19, display:"flex", flexDirection:"column", gap:3 }}>
+                        {["s","m","a","r","t"].filter(l=>e[`smart_${l}`]).map(l=>(
+                          <div key={l} style={{ display:"flex", gap:6, alignItems:"flex-start" }}>
+                            <span style={{ fontSize:10, fontWeight:700, color:"var(--teal)", width:12, flexShrink:0, marginTop:2 }}>{l.toUpperCase()}</span>
+                            <span style={{ fontSize:12, color:"var(--text2)", lineHeight:1.5 }}>{e[`smart_${l}`]}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -821,14 +865,134 @@ function CoachingDoc({ project, entries, setEntries, projects }) {
 
 
 // ── PROJEKT STECKBRIEF ─────────────────────────────────────────────────────
-function SbField({ label, fieldKey, multiline, placeholder, sb, upd, actualEditMode }) {
+
+// ── KPI ÜBERSICHT ──────────────────────────────────────────────────────────
+function KpiTable({ title, icon, color, rows, data, ziele, onUpdate, onUpdateZiel, isAdmin }) {
+  const [view, setView] = useState("monat"); // monat | ziel
+  const cols = MONTHS_SHORT;
+
+  const getCellKey = (row, col) => `${row}__${col}`;
+  const getVal = (row, col) => data?.[getCellKey(row, col)] ?? "";
+  const getZiel = (row) => ziele?.[row] ?? "";
+
+  const setVal = (row, col, val) => {
+    onUpdate({ ...data, [getCellKey(row, col)]: val });
+  };
+  const setZiel = (row, val) => {
+    onUpdateZiel({ ...ziele, [row]: val });
+  };
+
+  const pctColor = (val, ziel) => {
+    if (!val || !ziel) return "var(--text)";
+    const v = parseFloat(val.replace(",",".").replace("%",""));
+    const z = parseFloat(ziel.replace(",",".").replace("%",""));
+    if (isNaN(v)||isNaN(z)) return "var(--text)";
+    if (v >= z) return "var(--green)";
+    if (v >= z * 0.9) return "var(--orange)";
+    return "var(--red)";
+  };
+
+  return (
+    <div style={{ marginBottom:16 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+        <span style={{ width:26, height:26, borderRadius:7, background:BG_MAP[color]||"var(--bg4)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <i className={`ti ${icon}`} style={{ fontSize:13, color:COLOR_MAP[color]||"var(--teal)" }} aria-hidden="true" />
+        </span>
+        <p style={{ fontSize:13, fontWeight:500, color:COLOR_MAP[color]||"var(--teal)", margin:0 }}>{title}</p>
+        <div style={{ display:"flex", gap:4, marginLeft:"auto" }}>
+          {["monat","ziel"].map((v)=>(
+            <button key={v} onClick={()=>setView(v)} style={{ fontSize:11, padding:"3px 10px", background:view===v?BG_MAP[color]||"rgba(43,191,191,0.12)":"var(--bg3)", borderColor:view===v?COLOR_MAP[color]||"var(--teal)":"var(--border)", color:view===v?COLOR_MAP[color]||"var(--teal)":"var(--text3)" }}>
+              {v==="monat"?"Monatswerte":"Zielwerte"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ overflowX:"auto" }}>
+        <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
+          <thead>
+            <tr>
+              <th style={{ padding:"5px 10px", textAlign:"left", color:"var(--text3)", fontWeight:500, borderBottom:"0.5px solid var(--border)", minWidth:160, position:"sticky", left:0, background:"var(--bg3)", zIndex:1 }}>KPI</th>
+              {view==="monat" ? cols.map((m)=>(
+                <th key={m} style={{ padding:"5px 8px", textAlign:"center", color:"var(--text3)", fontWeight:500, borderBottom:"0.5px solid var(--border)", minWidth:52 }}>{m}</th>
+              )) : (
+                <th style={{ padding:"5px 10px", textAlign:"left", color:"var(--text3)", fontWeight:500, borderBottom:"0.5px solid var(--border)", minWidth:200 }}>Zielwert / Kommentar</th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row,ri)=>(
+              <tr key={row} style={{ background:ri%2===0?"var(--bg4)":"var(--bg3)" }}>
+                <td style={{ padding:"5px 10px", color:"var(--text2)", fontWeight:500, borderBottom:"0.5px solid rgba(255,255,255,0.04)", position:"sticky", left:0, background:ri%2===0?"var(--bg4)":"var(--bg3)", zIndex:1 }}>{row}</td>
+                {view==="monat" ? cols.map((m)=>{
+                  const val = getVal(row,m);
+                  const ziel = getZiel(row);
+                  return (
+                    <td key={m} style={{ padding:"3px 4px", borderBottom:"0.5px solid rgba(255,255,255,0.04)", textAlign:"center" }}>
+                      {isAdmin ? (
+                        <input
+                          value={val}
+                          onChange={(e)=>setVal(row,m,e.target.value)}
+                          style={{ width:46, padding:"2px 4px", fontSize:11, textAlign:"center", background:"transparent", border:"0.5px solid transparent", color:pctColor(val,ziel) }}
+                          onFocus={(e)=>e.target.style.borderColor="var(--teal)"}
+                          onBlur={(e)=>e.target.style.borderColor="transparent"}
+                        />
+                      ) : (
+                        <span style={{ fontSize:11, color:pctColor(val,ziel) }}>{val||"–"}</span>
+                      )}
+                    </td>
+                  );
+                }) : (
+                  <td style={{ padding:"4px 8px", borderBottom:"0.5px solid rgba(255,255,255,0.04)" }}>
+                    {isAdmin ? (
+                      <input value={getZiel(row)} onChange={(e)=>setZiel(row,e.target.value)} placeholder="z.B. ≥ 90 %" style={{ width:"100%", fontSize:12 }} />
+                    ) : (
+                      <span style={{ fontSize:12, color:getZiel(row)?"var(--teal)":"var(--text3)" }}>{getZiel(row)||"–"}</span>
+                    )}
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function KpiSection({ localSb, setLocalSb, onUpdate, isAdmin }) {
+  const updKpi = (data) => { const u={...localSb,kpiData:data}; setLocalSb(u); onUpdate({steckbrief:u}); };
+  const updUmsatz = (data) => { const u={...localSb,kpiUmsatzData:data}; setLocalSb(u); onUpdate({steckbrief:u}); };
+  const updZiel = (data) => { const u={...localSb,kpiZiele:data}; setLocalSb(u); onUpdate({steckbrief:u}); };
+
+  return (
+    <div>
+      <KpiTable title={`Projekt-KPIs ${CUR_YEAR}`} icon="ti-chart-bar" color="teal" rows={KPI_ROWS_PROJEKT} data={localSb.kpiData||{}} ziele={localSb.kpiZiele||{}} onUpdate={updKpi} onUpdateZiel={updZiel} isAdmin={isAdmin} />
+      <KpiTable title={`Umsatz ${CUR_YEAR}`} icon="ti-coins" color="orange" rows={KPI_ROWS_UMSATZ} data={localSb.kpiUmsatzData||{}} ziele={localSb.kpiZiele||{}} onUpdate={updUmsatz} onUpdateZiel={updZiel} isAdmin={isAdmin} />
+    </div>
+  );
+}
+
+function SbField({ label, fieldKey, multiline, placeholder, sb, upd, save, actualEditMode }) {
   return (
     <div style={{ marginBottom: 12 }}>
       <label style={{ fontSize: 12, color: "var(--text3)", display: "block", marginBottom: 4 }}>{label}</label>
       {actualEditMode ? (
         multiline
-          ? <textarea value={sb[fieldKey]||""} onChange={(e)=>upd(fieldKey,e.target.value)} rows={3} placeholder={placeholder||label} style={{ width:"100%" }} />
-          : <input value={sb[fieldKey]||""} onChange={(e)=>upd(fieldKey,e.target.value)} placeholder={placeholder||label} />
+          ? <textarea
+              value={sb[fieldKey]||""}
+              onChange={(e)=>upd(fieldKey,e.target.value)}
+              onBlur={(e)=>save(fieldKey,e.target.value)}
+              rows={3}
+              placeholder={placeholder||label}
+              style={{ width:"100%" }}
+            />
+          : <input
+              value={sb[fieldKey]||""}
+              onChange={(e)=>upd(fieldKey,e.target.value)}
+              onBlur={(e)=>save(fieldKey,e.target.value)}
+              placeholder={placeholder||label}
+            />
       ) : (
         <p style={{ fontSize: 13, color: sb[fieldKey] ? "var(--text)" : "var(--text3)", margin: 0, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
           {sb[fieldKey] || "–"}
@@ -853,11 +1017,29 @@ function SbSection({ title, icon, color, children }) {
 }
 
 function SteckbriefSection({ project, onUpdate, isAdmin }) {
-  const sb = project.steckbrief || { ...DEFAULT_STECKBRIEF };
+  const [localSb, setLocalSb] = useState(project.steckbrief || { ...DEFAULT_STECKBRIEF });
   const [editMode, setEditMode] = useState(false);
+  const [newLinkLabel, setNewLinkLabel] = useState("");
+  const [newLinkUrl, setNewLinkUrl] = useState("");
+  const [sbTab, setSbTab] = useState("info");
   const actualEditMode = isAdmin && editMode;
-  const upd = (k, v) => onUpdate({ steckbrief: { ...sb, [k]: v } });
-  const F = (props) => <SbField {...props} sb={sb} upd={upd} actualEditMode={actualEditMode} />;
+
+  // Sync if project changes externally
+  useEffect(() => {
+    setLocalSb(project.steckbrief || { ...DEFAULT_STECKBRIEF });
+  }, [project.id]);
+
+  // Local update - only updates local state (no re-render of parent)
+  const upd = (k, v) => setLocalSb(prev => ({ ...prev, [k]: v }));
+
+  // Save to parent only on blur
+  const save = (k, v) => {
+    const updated = { ...localSb, [k]: v };
+    setLocalSb(updated);
+    onUpdate({ steckbrief: updated });
+  };
+
+  const F = (props) => <SbField {...props} sb={localSb} upd={upd} save={save} actualEditMode={actualEditMode} />;
 
   return (
     <div>
@@ -867,11 +1049,16 @@ function SteckbriefSection({ project, onUpdate, isAdmin }) {
           {sb.projekttyp && <p style={{ fontSize: 12, color: "var(--text3)", margin: 0 }}>{sb.projekttyp}</p>}
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          {isAdmin && <button onClick={() => setEditMode(!editMode)} style={{ background: editMode ? "rgba(43,191,191,0.15)" : "var(--bg3)", borderColor: editMode ? "var(--teal)" : "var(--border)", color: editMode ? "var(--teal)" : "var(--text2)", display: "flex", alignItems: "center", gap: 6 }}>
+          {isAdmin && <button onClick={() => {
+              if (editMode) onUpdate({ steckbrief: localSb }); // save all on Fertig
+              setEditMode(!editMode);
+            }} style={{ background: editMode ? "rgba(43,191,191,0.15)" : "var(--bg3)", borderColor: editMode ? "var(--teal)" : "var(--border)", color: editMode ? "var(--teal)" : "var(--text2)", display: "flex", alignItems: "center", gap: 6 }}>
             <i className={`ti ${editMode ? "ti-check" : "ti-edit"}`} aria-hidden="true" />{editMode ? "Fertig" : "Bearbeiten"}
           </button>}
         </div>
       </div>
+      {sbTab==="kpi" && <KpiSection localSb={localSb} setLocalSb={setLocalSb} onUpdate={onUpdate} isAdmin={isAdmin} />}
+      {sbTab==="info" && <div>
 
       {/* Quick info row */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 14 }}>
@@ -887,8 +1074,8 @@ function SteckbriefSection({ project, onUpdate, isAdmin }) {
               <span style={{ fontSize: 11, color: "var(--text3)" }}>{label}</span>
             </div>
             {actualEditMode
-              ? <input value={sb[key]||""} onChange={(e)=>upd(key,e.target.value)} placeholder={label} style={{ fontSize: 12, padding: "4px 8px" }} />
-              : <p style={{ fontSize: 13, fontWeight: 500, color: sb[key] ? "var(--text)" : "var(--text3)", margin: 0 }}>{sb[key] || "–"}</p>
+              ? <input value={localSb[key]||""} onChange={(e)=>upd(key,e.target.value)} onBlur={(e)=>save(key,e.target.value)} placeholder={label} style={{ fontSize: 12, padding: "4px 8px" }} />
+              : <p style={{ fontSize: 13, fontWeight: 500, color: localSb[key] ? "var(--text)" : "var(--text3)", margin: 0 }}>{localSb[key] || "–"}</p>
             }
           </div>
         ))}
@@ -928,6 +1115,7 @@ function SteckbriefSection({ project, onUpdate, isAdmin }) {
           </SbSection>
         </div>
       </div>
+    </div>}
     </div>
   );
 }
