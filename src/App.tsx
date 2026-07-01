@@ -24,7 +24,7 @@ const DARK_THEME = `
 
 
 // ── AUTH ───────────────────────────────────────────────────────────────────
-const ADMIN_PIN = "hch2024";   // ← Admin-PIN hier ändern
+const ADMIN_PIN = "!!hch2026";   // ← Admin-PIN hier ändern
 const SESSION_KEY = "qm_role";
 
 function useAuth() {
@@ -101,14 +101,14 @@ function LoginScreen({ onLogin, onEnterAsUser }) {
         </div>
 
         <button onClick={onEnterAsUser} style={{ width:"100%", padding:"10px", fontSize:14, color:"var(--text2)" }}>
-          <i className="ti ti-user" style={{ marginRight:6 }} aria-hidden="true" />Als QM / Agent öffnen
+          <i className="ti ti-user" style={{ marginRight:6 }} aria-hidden="true" />Als QM / Teamleiter öffnen
         </button>
 
         <div style={{ marginTop:18, padding:"10px 12px", background:"var(--bg3)", borderRadius:8, border:"0.5px solid var(--border)" }}>
           <p style={{ fontSize:11, color:"var(--text3)", margin:0, lineHeight:1.5 }}>
             <i className="ti ti-info-circle" style={{ marginRight:4, color:"var(--blue)" }} aria-hidden="true" />
             <strong style={{ color:"var(--text2)" }}>Admin:</strong> Vollzugriff — Projekte, Handbuch, Steckbrief bearbeiten.<br />
-            <strong style={{ color:"var(--text2)" }}>QM / Agent:</strong> Monitorings & Coachings einpflegen.
+            <strong style={{ color:"var(--text2)" }}>QM / Teamleiter:</strong> Monitorings & Coachings einpflegen.
           </p>
         </div>
       </div>
@@ -121,7 +121,7 @@ function RoleBadge({ role, onLogout }) {
     <div style={{ display:"flex", alignItems:"center", gap:8 }}>
       <span style={{ fontSize:11, padding:"3px 10px", borderRadius:20, background: role==="admin" ? "rgba(245,166,35,0.15)" : "rgba(43,191,191,0.12)", color: role==="admin" ? "var(--orange)" : "var(--teal)", fontWeight:500 }}>
         <i className={`ti ${role==="admin" ? "ti-crown" : "ti-user"}`} style={{ marginRight:4, fontSize:11 }} aria-hidden="true" />
-        {role==="admin" ? "Admin" : "QM / Agent"}
+        {role==="admin" ? "Admin" : "QM / Teamleiter"}
       </span>
       <button onClick={onLogout} style={{ background:"none", border:"none", color:"var(--text3)", padding:"3px 6px", fontSize:12 }} title="Abmelden">
         <i className="ti ti-logout" style={{ fontSize:14 }} aria-hidden="true" />
