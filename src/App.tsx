@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
 
-const STORAGE_KEY = "qm_arbeitsmappe_v13";
+const STORAGE_KEY = "qm_arbeitsmappe_v14";
 
 const DARK_THEME = `
   :root {
@@ -24,7 +24,7 @@ const DARK_THEME = `
 
 
 // ── AUTH ───────────────────────────────────────────────────────────────────
-const ADMIN_PIN = "!!hch2026";   // ← Admin-PIN hier ändern
+const ADMIN_PIN = "hch2024";   // ← Admin-PIN hier ändern
 const SESSION_KEY = "qm_role";
 
 function useAuth() {
@@ -788,12 +788,7 @@ function CoachingDoc({ project, entries, setEntries, projects }) {
         <div><label style={{ fontSize:12, color:"var(--text3)", display:"block", marginBottom:4 }}>Thema <span style={{color:"var(--orange)"}}>*</span></label><select value={form.topic} onChange={(e)=>upd("topic",e.target.value)} style={{borderColor: form.topic ? undefined : "rgba(245,166,35,0.3)"}}><option value="">– Thema –</option>{sel.topics.map((t)=><option key={t}>{t}</option>)}</select></div>
         <div><label style={{ fontSize:12, color:"var(--text3)", display:"block", marginBottom:4 }}>Hauptziel</label><select value={form.goal} onChange={(e)=>upd("goal",e.target.value)}><option value="">– Ziel wählen –</option>{GOALS_LIBRARY.map((g)=><option key={g}>{g}</option>)}</select></div>
       </div>
-      {form.goal && (
-        <div style={{ marginBottom:10 }}>
-          <label style={{ fontSize:12, color:"var(--text3)", display:"block", marginBottom:4 }}>Ziel-Unterpunkt <span style={{ color:"var(--text3)", fontStyle:"italic" }}>(optional)</span></label>
-          <input value={form.goalSub} onChange={(e)=>upd("goalSub",e.target.value)} placeholder="z.B. Konkret: Servicefragen in mind. 3 von 5 Calls ansprechen" />
-        </div>
-      )}
+
       <div style={{ marginBottom:10 }}><label style={{ fontSize:12, color:"var(--text3)", display:"block", marginBottom:4 }}>Dokumentation</label><textarea value={form.doc} onChange={(e)=>upd("doc",e.target.value)} rows={3} placeholder="z.B. Call ID 2460398 – Servicefragen nicht gestellt" /></div>
       {(() => {
         const coachingReady = form.coach && form.agent && form.topic;
