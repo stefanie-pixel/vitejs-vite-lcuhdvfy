@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
 
-const STORAGE_KEY = "qm_arbeitsmappe_v7";
+const STORAGE_KEY = "qm_arbeitsmappe_v8";
 
 const DARK_THEME = `
   :root {
@@ -422,8 +422,8 @@ function ScoreBtn({ scores, setScores, ckey, opt }) {
 }
 
 // ── TYPE PANEL (single monitoring type) ────────────────────────────────────
-function TypePanel({ typeKey, typeDef, projectTypeCfg, scores, setScores, idValue, setIdValue, label }) {
-  const criteria = [...(typeDef?.criteria||[]), ...(projectTypeCfg?.extraCriteria||[])];
+function TypePanel({ typeKey, typeDef, projectTypeCfg, scores, setScores, idValue, setIdValue, label, customCriteria }) {
+  const criteria = customCriteria || [...(typeDef?.criteria||[]), ...(projectTypeCfg?.extraCriteria||[])];
   const vals = criteria.map((c)=>scores[c.key]).filter((v)=>v&&v!="/");
   const pct = vals.length>0 ? Math.round((vals.filter((v)=>v==="ja").length/vals.length)*100) : null;
   const pctColor = pct===null?"gray":pct>=90?"green":pct>=75?"orange":"red";
@@ -468,6 +468,12 @@ function MonitoringForm({ saved, setSaved, projects }) {
 
   const selProject = projects.find((p)=>p.id==projektId)||projects[0];
   const activeTypes = Object.entries(selProject?.monitoringTypes||{}).filter(([,cfg])=>cfg.active).map(([key])=>key);
+  // Use custom base criteria if defined, otherwise fall back to defaults
+  const getTypeCriteria = (typeKey) => {
+    const tc = selProject?.monitoringTypes?.[typeKey];
+    const base = tc?.customBaseCriteria || DEFAULT_TYPES[typeKey]?.criteria || [];
+    return [...base, ...(tc?.extraCriteria||[])];
+  };
 
   const getScores = (typeKey) => scores[typeKey]||{};
   const setTypeScores = (typeKey, val) => setScores({...scores,[typeKey]:val});
@@ -475,8 +481,7 @@ function MonitoringForm({ saved, setSaved, projects }) {
   const setId = (typeKey, val) => setIds({...ids,[typeKey]:val});
 
   const calcPct = (typeKey) => {
-    const cfg = selProject?.monitoringTypes?.[typeKey];
-    const criteria = [...(DEFAULT_TYPES[typeKey]?.criteria||[]),...(cfg?.extraCriteria||[])];
+    const criteria = getTypeCriteria(typeKey);
     const sc = getScores(typeKey);
     const vals = criteria.map((c)=>sc[c.key]).filter((v)=>v&&v!="/");
     return vals.length>0 ? Math.round((vals.filter((v)=>v==="ja").length/vals.length)*100) : null;
@@ -528,7 +533,7 @@ function MonitoringForm({ saved, setSaved, projects }) {
       {activeTypes.length>0 && (
         <div style={{ display:"grid", gridTemplateColumns:activeTypes.length===1?"1fr":activeTypes.length===2?"1fr 1fr":"repeat(auto-fit,minmax(280px,1fr))", gap:14, marginBottom:14 }}>
           {activeTypes.map((typeKey)=>(
-            <TypePanel key={typeKey} typeKey={typeKey} typeDef={DEFAULT_TYPES[typeKey]} projectTypeCfg={selProject?.monitoringTypes?.[typeKey]} scores={getScores(typeKey)} setScores={(v)=>setTypeScores(typeKey,v)} idValue={getId(typeKey)} setIdValue={(v)=>setId(typeKey,v)} />
+            <TypePanel key={typeKey} typeKey={typeKey} typeDef={DEFAULT_TYPES[typeKey]} projectTypeCfg={selProject?.monitoringTypes?.[typeKey]} scores={getScores(typeKey)} setScores={(v)=>setTypeScores(typeKey,v)} idValue={getId(typeKey)} setIdValue={(v)=>setId(typeKey,v)} customCriteria={getTypeCriteria(typeKey)} />
           ))}
         </div>
       )}
@@ -579,6 +584,8 @@ function MonitoringForm({ saved, setSaved, projects }) {
 // ── MONITORING TYPE CONFIGURATOR ───────────────────────────────────────────
 function TypeConfigurator({ project, onUpdate }) {
   const [newExtra, setNewExtra] = useState({});
+  const [expandedType, setExpandedType] = useState(null);
+  const [editingCriteria, setEditingCriteria] = useState(null); // typeKey being criteria-edited
   const types = ["call","ticket","mail","chat"];
   const cfg = project.monitoringTypes || {};
 
@@ -586,9 +593,10 @@ function TypeConfigurator({ project, onUpdate }) {
     const cur = cfg[typeKey]||{ active:false, extraCriteria:[] };
     onUpdate({ monitoringTypes:{ ...cfg, [typeKey]:{ ...cur, active:!cur.active } } });
   };
+
   const addExtra = (typeKey) => {
     const label = (newExtra[typeKey]||"").trim(); if(!label) return;
-    const cur = cfg[typeKey]||{ active:true, extraCriteria:[] };
+    const cur = cfg[typeKey]||{ active:true, extraCriteria:[], customBaseCriteria:null };
     onUpdate({ monitoringTypes:{ ...cfg, [typeKey]:{ ...cur, extraCriteria:[...(cur.extraCriteria||[]),{ key:`extra_${typeKey}_${Date.now()}`, label }] } } });
     setNewExtra({...newExtra,[typeKey]:""});
   };
@@ -597,12 +605,46 @@ function TypeConfigurator({ project, onUpdate }) {
     onUpdate({ monitoringTypes:{ ...cfg, [typeKey]:{ ...cur, extraCriteria:(cur.extraCriteria||[]).filter((c)=>c.key!==key) } } });
   };
 
+  // Custom base criteria (override defaults)
+  const getBaseCriteria = (typeKey) => {
+    const tc = cfg[typeKey]||{};
+    return tc.customBaseCriteria || DEFAULT_TYPES[typeKey]?.criteria || [];
+  };
+  const updateBaseCriteria = (typeKey, criteria) => {
+    const cur = cfg[typeKey]||{ active:true, extraCriteria:[] };
+    onUpdate({ monitoringTypes:{ ...cfg, [typeKey]:{ ...cur, customBaseCriteria:criteria } } });
+  };
+  const updateCriterionLabel = (typeKey, idx, label) => {
+    const criteria = [...getBaseCriteria(typeKey)];
+    criteria[idx] = { ...criteria[idx], label };
+    updateBaseCriteria(typeKey, criteria);
+  };
+  const removeCriterion = (typeKey, idx) => {
+    const criteria = getBaseCriteria(typeKey).filter((_,i)=>i!==idx);
+    updateBaseCriteria(typeKey, criteria);
+  };
+  const addCriterion = (typeKey, label) => {
+    const criteria = [...getBaseCriteria(typeKey), { key:`base_${typeKey}_${Date.now()}`, label }];
+    updateBaseCriteria(typeKey, criteria);
+  };
+  const resetCriteria = (typeKey) => {
+    const cur = cfg[typeKey]||{ active:true, extraCriteria:[] };
+    onUpdate({ monitoringTypes:{ ...cfg, [typeKey]:{ ...cur, customBaseCriteria:null } } });
+  };
+
+  const [newCriterion, setNewCriterion] = useState({});
+
   return (
     <div style={{ marginTop:16 }}>
       <p style={{ fontSize:13, fontWeight:500, color:"var(--teal)", marginBottom:12 }}>Monitoring-Typen & Kriterien · {project.name}</p>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
         {types.map((typeKey)=>{
-          const td = DEFAULT_TYPES[typeKey]; const tc = cfg[typeKey]||{ active:false, extraCriteria:[] };
+          const td = DEFAULT_TYPES[typeKey];
+          const tc = cfg[typeKey]||{ active:false, extraCriteria:[] };
+          const baseCriteria = getBaseCriteria(typeKey);
+          const isEditingCrit = editingCriteria === typeKey;
+          const hasCustom = !!(cfg[typeKey]?.customBaseCriteria);
+
           return (
             <div key={typeKey} style={{ background:"var(--bg4)", borderRadius:10, padding:"12px 14px", border:`0.5px solid ${tc.active?COLOR_MAP[td?.color]||"var(--teal)":"var(--border)"}`, transition:"border-color 0.2s" }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
@@ -614,22 +656,53 @@ function TypeConfigurator({ project, onUpdate }) {
                   {tc.active?"✓ Aktiv":"Inaktiv"}
                 </button>
               </div>
+
               {tc.active&&(
                 <>
-                  <div style={{ fontSize:11, color:"var(--text3)", marginBottom:6 }}>{td?.criteria?.length||0} Basis-Kriterien</div>
+                  {/* Base Criteria */}
+                  <div style={{ marginBottom:8 }}>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
+                      <span style={{ fontSize:11, color:"var(--text3)" }}>Bewertungskriterien ({baseCriteria.length}){hasCustom&&<span style={{ color:"var(--orange)", marginLeft:4 }}>· angepasst</span>}</span>
+                      <div style={{ display:"flex", gap:4 }}>
+                        {hasCustom&&<button onClick={()=>resetCriteria(typeKey)} style={{ fontSize:10, padding:"2px 7px", color:"var(--text3)", borderColor:"var(--border)" }}>↩ Reset</button>}
+                        <button onClick={()=>setEditingCriteria(isEditingCrit?null:typeKey)} style={{ fontSize:10, padding:"2px 8px", background:isEditingCrit?"rgba(43,191,191,0.15)":"var(--bg3)", borderColor:isEditingCrit?"var(--teal)":"var(--border)", color:isEditingCrit?"var(--teal)":"var(--text3)" }}>
+                          {isEditingCrit?"✓ Fertig":"✎ Bearbeiten"}
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
+                      {baseCriteria.map((c,idx)=>(
+                        <div key={c.key} style={{ display:"flex", alignItems:"center", gap:5 }}>
+                          {isEditingCrit
+                            ? <><input value={c.label} onChange={(e)=>updateCriterionLabel(typeKey,idx,e.target.value)} style={{ flex:1, fontSize:11, padding:"2px 7px" }} /><button onClick={()=>removeCriterion(typeKey,idx)} style={{ background:"none", border:"none", color:"var(--red)", padding:"1px 4px", flexShrink:0 }}><i className="ti ti-x" style={{ fontSize:10 }} /></button></>
+                            : <span style={{ fontSize:11, color:"var(--text2)", padding:"2px 0" }}>· {c.label}</span>
+                          }
+                        </div>
+                      ))}
+                      {isEditingCrit&&(
+                        <div style={{ display:"flex", gap:5, marginTop:4 }}>
+                          <input value={newCriterion[typeKey]||""} onChange={(e)=>setNewCriterion({...newCriterion,[typeKey]:e.target.value})} onKeyDown={(e)=>{ if(e.key==="Enter"&&(newCriterion[typeKey]||"").trim()){addCriterion(typeKey,(newCriterion[typeKey]||"").trim());setNewCriterion({...newCriterion,[typeKey]:""}); }}} placeholder="Neues Kriterium..." style={{ flex:1, fontSize:11, padding:"2px 7px" }} />
+                          <button onClick={()=>{ if((newCriterion[typeKey]||"").trim()){addCriterion(typeKey,(newCriterion[typeKey]||"").trim());setNewCriterion({...newCriterion,[typeKey]:""}); }}} style={{ padding:"2px 8px", fontSize:11, flexShrink:0 }}>+</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Extra Criteria */}
                   {(tc.extraCriteria||[]).length>0&&(
-                    <div style={{ display:"flex", flexDirection:"column", gap:4, marginBottom:8 }}>
+                    <div style={{ display:"flex", flexDirection:"column", gap:3, marginBottom:6, paddingTop:6, borderTop:"0.5px solid var(--border)" }}>
+                      <span style={{ fontSize:10, color:"var(--text3)", marginBottom:2 }}>Zusatzkriterien</span>
                       {(tc.extraCriteria||[]).map((c)=>(
-                        <div key={c.key} style={{ display:"flex", alignItems:"center", gap:6, background:"var(--bg3)", borderRadius:6, padding:"4px 8px" }}>
-                          <span style={{ flex:1, fontSize:12, color:"var(--text2)" }}>+ {c.label}</span>
-                          <button onClick={()=>rmExtra(typeKey,c.key)} style={{ background:"none", border:"none", color:"var(--red)", padding:"1px 4px" }}><i className="ti ti-x" style={{ fontSize:11 }} /></button>
+                        <div key={c.key} style={{ display:"flex", alignItems:"center", gap:6, background:"var(--bg3)", borderRadius:5, padding:"3px 7px" }}>
+                          <span style={{ flex:1, fontSize:11, color:"var(--teal)" }}>+ {c.label}</span>
+                          <button onClick={()=>rmExtra(typeKey,c.key)} style={{ background:"none", border:"none", color:"var(--red)", padding:"1px 3px" }}><i className="ti ti-x" style={{ fontSize:10 }} /></button>
                         </div>
                       ))}
                     </div>
                   )}
-                  <div style={{ display:"flex", gap:6 }}>
-                    <input value={newExtra[typeKey]||""} onChange={(e)=>setNewExtra({...newExtra,[typeKey]:e.target.value})} onKeyDown={(e)=>e.key==="Enter"&&addExtra(typeKey)} placeholder="Zusatzkriterium..." style={{ fontSize:12 }} />
-                    <button onClick={()=>addExtra(typeKey)} style={{ flexShrink:0, padding:"4px 10px", fontSize:12 }}>+</button>
+                  <div style={{ display:"flex", gap:5, paddingTop:4, borderTop:"0.5px solid var(--border)" }}>
+                    <input value={newExtra[typeKey]||""} onChange={(e)=>setNewExtra({...newExtra,[typeKey]:e.target.value})} onKeyDown={(e)=>e.key==="Enter"&&addExtra(typeKey)} placeholder="+ Zusatzkriterium..." style={{ fontSize:11, padding:"3px 8px" }} />
+                    <button onClick={()=>addExtra(typeKey)} style={{ flexShrink:0, padding:"3px 9px", fontSize:11 }}>+</button>
                   </div>
                 </>
               )}
@@ -712,13 +785,8 @@ function CoachingDoc({ project, entries, setEntries, projects }) {
 
 
 // ── PROJEKT STECKBRIEF ─────────────────────────────────────────────────────
-function SteckbriefSection({ project, onUpdate, isAdmin }) {
-  const sb = project.steckbrief || { ...DEFAULT_STECKBRIEF };
-  const [editMode, setEditMode] = useState(false);
-  const actualEditMode = isAdmin && editMode;
-  const upd = (k, v) => onUpdate({ steckbrief: { ...sb, [k]: v } });
-
-  const Field = ({ label, fieldKey, multiline, placeholder }) => (
+function SbField({ label, fieldKey, multiline, placeholder, sb, upd, actualEditMode }) {
+  return (
     <div style={{ marginBottom: 12 }}>
       <label style={{ fontSize: 12, color: "var(--text3)", display: "block", marginBottom: 4 }}>{label}</label>
       {actualEditMode ? (
@@ -732,8 +800,10 @@ function SteckbriefSection({ project, onUpdate, isAdmin }) {
       )}
     </div>
   );
+}
 
-  const Section = ({ title, icon, color, children }) => (
+function SbSection({ title, icon, color, children }) {
+  return (
     <div style={{ background: "var(--bg3)", border: `0.5px solid ${COLOR_MAP[color]||"var(--border)"}`, borderRadius: 10, padding: "14px 16px", marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <span style={{ width: 28, height: 28, borderRadius: 7, background: BG_MAP[color]||"var(--bg4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -744,6 +814,14 @@ function SteckbriefSection({ project, onUpdate, isAdmin }) {
       {children}
     </div>
   );
+}
+
+function SteckbriefSection({ project, onUpdate, isAdmin }) {
+  const sb = project.steckbrief || { ...DEFAULT_STECKBRIEF };
+  const [editMode, setEditMode] = useState(false);
+  const actualEditMode = isAdmin && editMode;
+  const upd = (k, v) => onUpdate({ steckbrief: { ...sb, [k]: v } });
+  const F = (props) => <SbField {...props} sb={sb} upd={upd} actualEditMode={actualEditMode} />;
 
   return (
     <div>
@@ -782,36 +860,36 @@ function SteckbriefSection({ project, onUpdate, isAdmin }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div>
-          <Section title="Projektübersicht" icon="ti-file-description" color="teal">
-            <Field label="Hintergrund & Ausgangssituation" fieldKey="hintergrund" multiline placeholder="Aufbau, Ziele, Kontext..." />
-            <Field label="Abrechnungsmodalitäten" fieldKey="abrechnung" multiline placeholder="z.B. 0,58€/Min, Schulungen 25€/h..." />
-          </Section>
-          <Section title="KPIs, Forecast & Stoßzeiten" icon="ti-chart-bar" color="orange">
-            <Field label="Wichtige KPIs" fieldKey="kpis" multiline placeholder="z.B. AHT < 6 Min, FCR > 90%, CSAT..." />
-            <Field label="Forecast & Auslastung" fieldKey="forecast" multiline placeholder="z.B. Prognose 3 Monate, 92% Auslastung..." />
-            <Field label="Stoßzeiten" fieldKey="stoszeiten" placeholder="z.B. 10:00-12:00 & 14:00-16:00" />
-            <Field label="Blending mit anderen Projekten" fieldKey="blending" placeholder="z.B. Check24 Möbel" />
-          </Section>
-          <Section title="Risiken, Chancen & Besonderheiten" icon="ti-alert-triangle" color="red">
-            <Field label="Identifizierte Risiken & Maßnahmen" fieldKey="risiken" multiline placeholder="z.B. technische Integrationsprobleme..." />
-            <Field label="Chancen des Projekts" fieldKey="chancen" multiline placeholder="z.B. Skalierungspotenzial durch Forecasts..." />
-          </Section>
+          <SbSection title="Projektübersicht" icon="ti-file-description" color="teal">
+            <F label="Hintergrund & Ausgangssituation" fieldKey="hintergrund" multiline placeholder="Aufbau, Ziele, Kontext..." />
+            <F label="Abrechnungsmodalitäten" fieldKey="abrechnung" multiline placeholder="z.B. 0,58€/Min, Schulungen 25€/h..." />
+          </SbSection>
+          <SbSection title="KPIs, Forecast & Stoßzeiten" icon="ti-chart-bar" color="orange">
+            <F label="Wichtige KPIs" fieldKey="kpis" multiline placeholder="z.B. AHT < 6 Min, FCR > 90%, CSAT..." />
+            <F label="Forecast & Auslastung" fieldKey="forecast" multiline placeholder="z.B. Prognose 3 Monate, 92% Auslastung..." />
+            <F label="Stoßzeiten" fieldKey="stoszeiten" placeholder="z.B. 10:00-12:00 & 14:00-16:00" />
+            <F label="Blending mit anderen Projekten" fieldKey="blending" placeholder="z.B. Check24 Möbel" />
+          </SbSection>
+          <SbSection title="Risiken, Chancen & Besonderheiten" icon="ti-alert-triangle" color="red">
+            <F label="Identifizierte Risiken & Maßnahmen" fieldKey="risiken" multiline placeholder="z.B. technische Integrationsprobleme..." />
+            <F label="Chancen des Projekts" fieldKey="chancen" multiline placeholder="z.B. Skalierungspotenzial durch Forecasts..." />
+          </SbSection>
         </div>
         <div>
-          <Section title="Agenten & Hardware" icon="ti-users" color="blue">
-            <Field label="Teamgröße & FTE" fieldKey="teamGroesse" placeholder="z.B. 8 Agenten, 6,5 FTE" />
-            <Field label="FTE-Ziel" fieldKey="fte" placeholder="z.B. Ziel: 50 FTE" />
-            <Field label="Hardware & Technik" fieldKey="hardware" placeholder="z.B. Linux, Windows, Yubikey..." />
-          </Section>
-          <Section title="Organisation & Verantwortlichkeiten" icon="ti-sitemap" color="purple">
-            <Field label="Ansprechpartner intern" fieldKey="ansprechpartnerIntern" multiline placeholder="z.B. Yvonne Grundmann, Pascal..." />
-            <Field label="Ansprechpartner extern" fieldKey="ansprechpartnerExtern" multiline placeholder="z.B. Jörn Bergner (QM), Peter Micka..." />
-            <Field label="Kommunikationswege" fieldKey="kommunikation" placeholder="z.B. Slack + E-Mail, Teams..." />
-          </Section>
-          <Section title="Zusammenfassung & Nächste Schritte" icon="ti-list-check" color="green">
-            <Field label="Kernarbeit & wichtige Deadlines" fieldKey="naechsteSchritte" multiline placeholder="z.B. Go-Live 03.03., Hypercare bis 16.03..." />
-            <Field label="Notizen & Besonderheiten" fieldKey="notizen" multiline placeholder="Freie Notizen..." />
-          </Section>
+          <SbSection title="Agenten & Hardware" icon="ti-users" color="blue">
+            <F label="Teamgröße & FTE" fieldKey="teamGroesse" placeholder="z.B. 8 Agenten, 6,5 FTE" />
+            <F label="FTE-Ziel" fieldKey="fte" placeholder="z.B. Ziel: 50 FTE" />
+            <F label="Hardware & Technik" fieldKey="hardware" placeholder="z.B. Linux, Windows, Yubikey..." />
+          </SbSection>
+          <SbSection title="Organisation & Verantwortlichkeiten" icon="ti-sitemap" color="purple">
+            <F label="Ansprechpartner intern" fieldKey="ansprechpartnerIntern" multiline placeholder="z.B. Yvonne Grundmann, Pascal..." />
+            <F label="Ansprechpartner extern" fieldKey="ansprechpartnerExtern" multiline placeholder="z.B. Jörn Bergner (QM), Peter Micka..." />
+            <F label="Kommunikationswege" fieldKey="kommunikation" placeholder="z.B. Slack + E-Mail, Teams..." />
+          </SbSection>
+          <SbSection title="Zusammenfassung & Nächste Schritte" icon="ti-list-check" color="green">
+            <F label="Kernarbeit & wichtige Deadlines" fieldKey="naechsteSchritte" multiline placeholder="z.B. Go-Live 03.03., Hypercare bis 16.03..." />
+            <F label="Notizen & Besonderheiten" fieldKey="notizen" multiline placeholder="Freie Notizen..." />
+          </SbSection>
         </div>
       </div>
     </div>
@@ -1009,10 +1087,10 @@ function HandbookSection({ handbook, setHandbook, triggers, setTriggers }) {
                   <span style={{ width:28, height:28, borderRadius:7, background:BG_MAP[s.color]||"var(--bg3)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                     <i className={`ti ${s.icon}`} style={{ fontSize:14, color:COLOR_MAP[s.color]||"var(--teal)" }} aria-hidden="true" />
                   </span>
-                  {editMode&&isAdmin ? <input value={s.phase} onChange={(e)=>upd(s.id,{phase:e.target.value})} onClick={(ev)=>ev.stopPropagation()} style={{ flex:1, fontWeight:500 }} /> : <span style={{ flex:1, fontSize:14, fontWeight:500 }}>{s.phase}</span>}
+                  {(editMode&&isAdmin) ? <input value={s.phase} onChange={(e)=>upd(s.id,{phase:e.target.value})} onClick={(ev)=>ev.stopPropagation()} style={{ flex:1, fontWeight:500 }} /> : <span style={{ flex:1, fontSize:14, fontWeight:500 }}>{s.phase}</span>}
                   <i className={`ti ti-chevron-${isOpen?"up":"down"}`} style={{ fontSize:13, color:"var(--text3)" }} aria-hidden="true" />
                 </button>
-                {editMode&&isAdmin&&(
+                {(editMode&&isAdmin)&&(
                   <div style={{ display:"flex", gap:4, paddingRight:10 }}>
                     <select value={s.color} onChange={(e)=>upd(s.id,{color:e.target.value})} style={{ width:75, fontSize:11, padding:"3px 6px" }}>{COLORS.map((c)=><option key={c} value={c}>{c}</option>)}</select>
                     <select value={s.icon} onChange={(e)=>upd(s.id,{icon:e.target.value})} style={{ width:90, fontSize:11, padding:"3px 6px" }}>{ICONS.map((ic)=><option key={ic} value={ic}>{ic.replace("ti-","")}</option>)}</select>
@@ -1029,14 +1107,14 @@ function HandbookSection({ handbook, setHandbook, triggers, setTriggers }) {
                       </li>
                     ))}
                   </ol>
-                  {editMode&&isAdmin&&(<div style={{ display:"flex", gap:8, marginTop:8 }}><input value={newStep} onChange={(e)=>setNewStep(e.target.value)} onKeyDown={(e)=>{ if(e.key==="Enter"){addStep(s.id,newStep);setNewStep("");} }} placeholder="Neuer Schritt..." /><button onClick={()=>{addStep(s.id,newStep);setNewStep("");}}>+ Schritt</button></div>)}
+                  {(editMode&&isAdmin)&&(<div style={{ display:"flex", gap:8, marginTop:8 }}><input value={newStep} onChange={(e)=>setNewStep(e.target.value)} onKeyDown={(e)=>{ if(e.key==="Enter"){addStep(s.id,newStep);setNewStep("");} }} placeholder="Neuer Schritt..." /><button onClick={()=>{addStep(s.id,newStep);setNewStep("");}}>+ Schritt</button></div>)}
                 </div>
               )}
             </div>
           );
         })}
       </div>
-      {editMode&&isAdmin&&(<div style={{ display:"flex", gap:8, marginTop:10 }}><input value={newPhase} onChange={(e)=>setNewPhase(e.target.value)} onKeyDown={(e)=>{ if(e.key==="Enter"&&newPhase.trim()){setHandbook([...handbook,{id:Date.now(),phase:newPhase.trim(),icon:"ti-star",color:"teal",steps:[]}]);setNewPhase("");} }} placeholder="Neue Phase..." /><button onClick={()=>{ if(newPhase.trim()){setHandbook([...handbook,{id:Date.now(),phase:newPhase.trim(),icon:"ti-star",color:"teal",steps:[]}]);setNewPhase("");} }}>+ Phase</button></div>)}
+      {(editMode&&isAdmin)&&(<div style={{ display:"flex", gap:8, marginTop:10 }}><input value={newPhase} onChange={(e)=>setNewPhase(e.target.value)} onKeyDown={(e)=>{ if(e.key==="Enter"&&newPhase.trim()){setHandbook([...handbook,{id:Date.now(),phase:newPhase.trim(),icon:"ti-star",color:"teal",steps:[]}]);setNewPhase("");} }} placeholder="Neue Phase..." /><button onClick={()=>{ if(newPhase.trim()){setHandbook([...handbook,{id:Date.now(),phase:newPhase.trim(),icon:"ti-star",color:"teal",steps:[]}]);setNewPhase("");} }}>+ Phase</button></div>)}
       <div style={{ marginTop:18, padding:"14px 16px", background:"var(--bg3)", borderRadius:10, border:"0.5px solid var(--border)" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
           <p style={{ fontSize:13, fontWeight:500, color:"var(--orange)", margin:0 }}>Trigger-Schwellenwerte</p>
